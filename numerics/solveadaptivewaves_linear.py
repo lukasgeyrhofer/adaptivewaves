@@ -61,11 +61,11 @@ except:
         idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin()
         u = np.zeros(space)
         if idxcrossover1 < idxcrossover2:
-            u[idxcrossover2:] = x[idxcrossover2:]/2 - speed/(x[idxcrossover2:]*2)
+            u[idxcrossover2:]              = x[idxcrossover2:]/2
             u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
-            u[:idxcrossover1] = np.exp(x[:idxcrossover1])
+            u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
         else:
-            u[idxcrossover2:] = x[idxcrossover2:]/2 - speed/(x[idxcrossover2:]*2)
+            u[idxcrossover2:] = x[idxcrossover2:]/2
             u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
 
 if args.enforceboundaries:
