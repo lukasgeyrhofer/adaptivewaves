@@ -6,13 +6,12 @@ import sys,math
 import argparse
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Numerical solution for fixation probabilities (n=1) in traveling wave models of adaptation with diffusion and exponential mutation kernels")
 parser.add_argument("-i","--infile")
 parser.add_argument("-o","--outfile",default=None)
 parser.add_argument("-v","--speed",type=float,default=1.)
 parser.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff")
 parser.add_argument("-m","--mutationrate",type=float,default=1e-2)
-parser.add_argument("-u","--ufile")
 
 parser.add_argument("-s","--space",type=int,default=2000)
 parser.add_argument("-z","--zero",type=int,default=1000)
