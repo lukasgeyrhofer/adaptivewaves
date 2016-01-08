@@ -5,22 +5,26 @@ from scipy.special import airy
 import sys,math
 import argparse
 
-
 parser = argparse.ArgumentParser(description="Numerical solution for fixation probabilities (n=1) in traveling wave models of adaptation with diffusion and exponential mutation kernels")
-parser.add_argument("-i","--infile")
-parser.add_argument("-o","--outfile",default=None)
-parser.add_argument("-v","--speed",type=float,default=1.)
-parser.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff")
-parser.add_argument("-m","--mutationrate",type=float,default=1e-2)
 
-parser.add_argument("-s","--space",type=int,default=2000)
-parser.add_argument("-z","--zero",type=int,default=1000)
-parser.add_argument("-d","--dx",type=float,default=5e-2)
+parser_alg = parser.add_argument_group(description="Algorithm and IO parameters")
+parser_alg.add_argument("-i","--infile",help="start from profile given by INFILE")
+parser_alg.add_argument("-o","--outfile",default=None,help="write output to OUTFILE instead of stdout")
+parser_alg.add_argument("-S","--maxsteps",type=int,default=10000)
+parser_alg.add_argument("-R","--redblack",action="store_true",default=False,help="Iterate only even or odd lattice points, helps with stability")
+parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="Slower convergence but more stability for alpha<1")
+parser_alg.add_argument("-B","--enforceboundaries",action="store_true",default=False,help="Force solution to positive (and bounded) values")
 
-parser.add_argument("-S","--maxsteps",type=int,default=10000)
-parser.add_argument("-R","--redblack",action="store_true",default=False)
-parser.add_argument("-a","--alpha",type=float,default=1.)
-parser.add_argument("-B","--enforceboundaries",action="store_true",default=False)
+parser_lattice = parser.add_argument_group(description="Lattice parameters")
+parser_lattice.add_argument("-s","--space",type=int,default=2000,help="Number of lattice points")
+parser_lattice.add_argument("-z","--zero",type=int,default=1000,help="Position of Zero on lattice")
+parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice spacing")
+
+parser_params = parser.add_argument_group(description="Profile parameters")
+parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed (default: 1)")
+parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff",help="Mutation kernel (default: \"diff\")")
+parser_params.add_argument("-m","--mutationrate",type=float,default=1e-2,help="Mutation rate (only used for exp kernel, default: 1e-2)")
+
 args = parser.parse_args()
 
 try:
@@ -33,6 +37,8 @@ try:
     speed        = args.speed
     mutationrate = args.mutationrate
 except:
+    # could not load file, either because input file was empty/did not exist or some other error while loading
+    # thus, start from scratch
     print >> sys.stderr,"# starting from scratch"
     dx           = args.dx
     space        = args.space
