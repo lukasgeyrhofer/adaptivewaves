@@ -1,0 +1,715 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <math.h>
+#include <time.h>
+
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_vector.h>
+
+
+int space = 100;
+int space0 = 50;
+double dx = 1e-3;
+int maxSteps = 1000;
+
+int outputstep = 100;
+int quiet = 0;
+
+int noise = 0;
+double populationsize = 1.;
+double populationvariance;
+int correctformeanfitness =0;
+
+int allshifts = 0;
+int shiftthreshold = 1;
+double current_mean_fitness = 0.;
+
+int read_from_file = 0;
+int write_to_file = 0;
+char c_infile[128],c_outfile[128];
+
+// not yet implemented:
+int constrainttype = 0; // 0 ... no noise; popsize = 1
+			// 1 ... noise; fixed N
+			// 2 ... noise; u*
+
+int have_u_infile = 0;
+char u_infile[128];
+double *u;
+double *uread;
+double wavespeed = 0.;
+double speedprefactor;
+int dens_ustar_latticeratio = 1;
+
+double *ucmf;
+
+double epsilon = 1e-2;
+double mutationrate = 1e-5;
+double twoepssqrt;
+double *nn;
+double *tmp;
+
+double *x;
+
+double reproduction_coefficient_base,reproduction_coefficient;
+double epsdx;
+
+double *mutation_inflow;
+double mutation_outflow;
+double mutation_sigma = 0.01;
+
+
+const gsl_rng_type* T;
+const gsl_rng* rg; /* gsl, global generator */
+unsigned long int randseed = 0;
+
+
+int acf = 0;
+double *acf_sum, *acf_count;
+double *acf_fv_pastvalues;
+double acf_maxtime;
+double acf_fv_sum = 0., acf_fv_count = 0.;
+int acf_maxindex;
+char acf_outfile[128];
+
+double popdens_0thmom;
+double popdens_1stmom;
+double popdens_2ndmom;
+
+
+
+int averagepopdens = 0;
+int averagepopdens_center = 1;
+int averagepopdens_resolution = 10;
+int averagepopdens_havefile = 0;
+double *averagepopdens_dens;
+char averagepopdens_outputfile[128];
+double averagepopdens_count = 0.;
+double averagepopdens_dx;
+int averagepopdens_space;
+int averagepopdens_space0;
+int averagepopdens_lower;
+int averagepopdens_higher;
+
+int print_error(char *msg) {
+  fprintf(stderr,"ERROR: %s\n",msg);
+  exit(1);
+}
+
+// ************************************************************
+// **   parameters
+// ************************************************************
+
+
+void parsecomamndline(int argn, char *argv[]) {
+  char c;
+  while((c = getopt(argn,argv,"s:z:d:S:e:D:O:qQi:o:R:N:Ca:A:M:u:U:T:H:h:")) != -1) {
+    switch(c) {
+      case 's':	space = atoi(optarg);
+		break;
+      case 'z':	space0 = atoi(optarg);
+		break;
+      case 'd':	dx = atof(optarg);
+		break;
+      case 'i':	strcpy(c_infile,optarg);
+		read_from_file = 1;
+		break;
+      case 'o':	strcpy(c_outfile,optarg);
+		write_to_file = 1;
+		break;
+      case 'u':	strcpy(u_infile,optarg);
+		if(noise > 0)
+		  print_error("Only a single contraint-type can be used (either option -N POPSIZE or -u FILENAME)");
+		noise = 2;
+		break;
+      case 'U':	if(noise == 2) {
+		  dens_ustar_latticeratio = atoi(optarg);
+		}else{
+		  print_error("option -u FILENAME needed before option -U RATIO");
+		}
+		break;
+      case 'S':	maxSteps = atoi(optarg);
+		break;
+      case 'e': epsilon = atof(optarg);
+		break;
+      case 'D':	mutationrate = atof(optarg);
+		break;
+      case 'O':	outputstep = atoi(optarg);
+		break;
+      case 'q':	quiet = 2;
+		break;
+      case 'Q':	quiet = 1;
+		break;
+      case 'R':	randseed =atoi(optarg);
+		break;
+      case 'N': populationsize = atof(optarg);
+		if(noise > 0)
+		  print_error("Only a single contraint-type can be used (either option -N POPSIZE or -u FILENAME)");
+		noise = 1;
+		break;
+      case 'C':	correctformeanfitness = 1;
+		break;
+      case 'a':	acf = 1;
+		strcpy(acf_outfile,optarg);
+		break;
+      case 'A':	if( acf == 0 ){
+		  print_error("Option -a OUTFILE necessary before -A");
+		}else{
+		  acf_maxtime = atof(optarg);
+		}
+		break;
+      case 'M':	mutation_sigma = atof(optarg);
+		break;
+      case 'T':	shiftthreshold = atoi(optarg);
+		break;
+      case 'h':	strcpy(averagepopdens_outputfile,optarg);
+		averagepopdens_havefile = 1;
+		averagepopdens = 1;
+		break;
+      case 'H':	averagepopdens = 1;
+		averagepopdens_resolution = atoi(optarg);
+		if(averagepopdens_resolution < 0) {
+		  averagepopdens_resolution *= -1;
+		  averagepopdens_center = 0;
+		}
+		break;
+    }
+  }
+  if(randseed==0)randseed=time(NULL);
+}
+
+// ************************************************************
+// **   input and output for configuration files
+// ************************************************************
+
+void read_popdens(int importparameters) {
+  int i;
+  int icount,dcount;
+  int *ival;
+  double *dval;
+  int c_space,c_space0;
+  double c_dx;
+  FILE *fp;
+  
+  fp = fopen(c_infile,"rb");
+  if(fp != NULL) {
+    fread(&icount,sizeof(int),1,fp);
+    fread(&dcount,sizeof(int),1,fp);
+    fread(&c_dx,sizeof(double),1,fp);
+    fread(&c_space,sizeof(int),1,fp);
+    fread(&c_space0,sizeof(int),1,fp);
+    
+    if(importparameters) {
+      space = c_space;
+      space0 = c_space0;
+      dx = c_dx;
+    }
+        
+    if(icount>0) {
+      ival = (int*)malloc(icount*sizeof(int));
+      fread(ival,sizeof(int),icount,fp);
+      free(ival);
+    }
+    
+    if(dcount>0) {
+      dval = (double*)malloc(dcount*sizeof(int));
+      fread(dval,sizeof(double),dcount,fp);
+      free(dval);
+    }
+    
+    if(space != c_space)print_error("lattice does not match!");
+    nn = (double*)malloc(space*sizeof(double));
+    fread(nn,sizeof(double),space,fp);
+    for(i=0;i<space;i++)nn[i] *= dx;
+    
+    fclose(fp);
+  }else{
+    print_error("could not open c-infile");
+  }
+}
+
+
+
+void write_popdens() {
+  int icount=0,dcount=0;
+  int i;
+  FILE *fpc;
+  
+  fpc=fopen(c_outfile,"wb");
+  if(fpc != NULL) {
+    fwrite(&icount,sizeof(int),1,fpc);
+    fwrite(&dcount,sizeof(int),1,fpc);
+    fwrite(&dx,sizeof(double),1,fpc);
+    fwrite(&space,sizeof(int),1,fpc);
+    fwrite(&space0,sizeof(int),1,fpc);
+    for(i=0;i<space;i++)nn[i] /= dx;
+    fwrite(nn,sizeof(double),space,fpc);
+    fclose(fpc);
+  }else{
+    print_error("could not open c-outfile");
+  }
+}
+
+
+
+
+
+void read_constraint(int importparameters) {
+  int icount,dcount;
+  int *ival;
+  double *dval;
+  int u_space,u_space0;
+  double u_dx;
+  FILE *fp;
+  int i,j;
+  
+  fp = fopen(u_infile,"rb");
+  if(fp!=NULL) {
+    fread(&icount,sizeof(int),1,fp);
+    fread(&dcount,sizeof(int),1,fp);
+    fread(&u_dx,sizeof(double),1,fp);
+    fread(&u_space,sizeof(int),1,fp);
+    fread(&u_space0,sizeof(int),1,fp);
+    
+    if(icount>0) {
+      ival = (int*)malloc(icount*sizeof(int));
+      fread(ival,sizeof(int),icount,fp);
+      free(ival);
+    }
+    
+    if(dcount>=3) {
+      dval = (double*)malloc(dcount*sizeof(int));
+      fread(dval,sizeof(double),dcount,fp);
+      mutationrate = dval[0];
+      wavespeed = dval[1];
+      mutation_sigma = dval[2];
+      free(dval);
+    }else{
+      print_error("not enough values in constraint file! need at least 3 double parameters: mutationrate, wavespeed, mutationsigma!");
+    }
+    
+    if(importparameters) {
+      space = u_space/dens_ustar_latticeratio;
+      space0 = u_space0/dens_ustar_latticeratio;
+      dx = u_dx*dens_ustar_latticeratio;
+    }else{
+      if((space*dens_ustar_latticeratio != u_space)||(space0*dens_ustar_latticeratio != u_space0))print_error("lattice does not match! u");
+    }
+    
+    uread = (double*)malloc(u_space*sizeof(double));
+    fread(uread,sizeof(double),u_space,fp);
+    
+    fclose(fp);
+  }
+  
+  if(dens_ustar_latticeratio > 1) {
+    u = (double*)calloc(space,sizeof(double));
+    for(i=0;i<space;i++) {
+      for(j=0;j<dens_ustar_latticeratio;j++) {
+	u[i] += uread[i*dens_ustar_latticeratio+j];
+      }
+      u[i] /= (1.*dens_ustar_latticeratio);
+    }
+    free(uread);
+  }else{
+    u = (double*)malloc(space*sizeof(double));
+    memcpy(u,uread,space*sizeof(double));
+    free(uread);
+  }
+  
+  
+  ucmf = (double*)malloc(space*sizeof(double));
+
+  
+}
+
+
+
+void flat_constraint(double size) {
+  int i;
+  u=(double*)malloc(space*sizeof(double));
+  for(i=0;i<space;i++)u[i] = 1./size;
+}
+
+
+void initialize_with_gaussian_popdens() {
+  int i;
+  for(i=0;i<space;i++) {
+    nn[i] = exp(-(i-space0)*(i-space0)*dx*dx/(2.*wavespeed));
+  }
+}
+
+
+// ************************************************************
+// **   screen output
+// ************************************************************
+
+ 
+void print_populationdensity(int timestep) {
+  int i;
+  double corr = allshifts*dx;
+  if(correctformeanfitness)corr = current_mean_fitness + allshifts*dx;
+  for(i=0;i<space;i++) {
+    fprintf(stderr,"%lf %14.10lf %20.10e\n%lf %14.10lf %20.10e\n",timestep*epsilon,(i-space0)*dx+corr,nn[i],timestep*epsilon,(i-space0+1)*dx+corr,nn[i]);
+  }
+  fprintf(stderr,"\n");
+}
+
+
+
+
+// ************************************************************
+// **   initialization
+// ************************************************************
+
+int initialize() {
+  int i;
+
+  
+  if(read_from_file) {
+    read_popdens(1);
+    if(noise == 0)flat_constraint(1.);
+    if(noise == 1)flat_constraint(populationsize);
+    if(noise == 2)read_constraint(0);
+  }else{
+    if(noise == 0)flat_constraint(1.);
+    if(noise == 1)flat_constraint(populationsize);
+    if(noise == 2)read_constraint(1);
+    nn = (double*)calloc(space,sizeof(double));
+    initialize_with_gaussian_popdens();
+  }
+  tmp = (double*)malloc(space*sizeof(double));
+
+  gsl_rng_env_setup();
+  T = gsl_rng_default;
+  rg = gsl_rng_alloc(T);
+  gsl_rng_set(rg, randseed);
+
+  twoepssqrt = sqrt(2.*epsilon);
+  speedprefactor = wavespeed/dx*epsilon;
+  
+  mutation_inflow = (double*)malloc(space*sizeof(double));
+  mutation_outflow = 0;
+  for(i=1;i<space;i++) {
+    mutation_inflow[i] = epsilon*exp(-i*dx/mutation_sigma)/mutation_sigma*mutationrate*dx;
+//     printf("%d %lf\n",i,mutation_inflow[i]);
+    mutation_outflow += mutation_inflow[i];
+  }
+  
+//   exit(1);
+  reproduction_coefficient_base = (1.+epsilon*((-space0)*dx-mutation_outflow));
+  epsdx = epsilon*dx;
+  
+  
+  if(acf) {
+    acf_maxindex      = (int)(acf_maxtime/(outputstep*epsilon));
+    acf_count         = (double*)calloc(acf_maxindex,sizeof(double));
+    acf_sum           = (double*)calloc(acf_maxindex,sizeof(double));
+    acf_fv_pastvalues = (double*)malloc(acf_maxindex*sizeof(double));
+  }
+  
+  
+  printf("# mutationrate   = %e\n",mutationrate);
+  printf("# mutation_sigma = %e\n",mutation_sigma);
+  printf("# speed          = %e\n",wavespeed);
+  
+  
+  x = (double*)malloc(space*sizeof(double));
+  for(i=0;i<space;i++)x[i] = (i-space0)*dx;
+  
+//   printf("reproduction_coefficient_base = %e\nspeedprefactor = %e\n",reproduction_coefficient_base,speedprefactor);
+//   exit(1);
+  
+}
+
+
+// ************************************************************
+// **   autocorrelation function
+// ************************************************************
+
+
+void update_acf(int timestep,double fv) {
+  int acf_curindex = (timestep/outputstep)%acf_maxindex;
+  int i;
+  acf_fv_pastvalues[acf_curindex] = fv;
+  
+  acf_fv_sum += fv;
+  acf_fv_count += 1.;
+
+  if(timestep/outputstep > acf_maxindex) {
+    
+    
+    for(i=acf_curindex;i>=0;i--) {
+      acf_sum[acf_curindex-i] += fv*acf_fv_pastvalues[i];
+      acf_count[acf_curindex-i] += 1.;
+    }
+    for(i=acf_maxindex;i>acf_curindex;i--) {
+      acf_sum[acf_curindex-i+acf_maxindex] += fv*acf_fv_pastvalues[i];
+      acf_count[acf_curindex-i+acf_maxindex] += 1.;
+    }
+  }
+}
+
+
+void write_acf() {
+  int i;
+  FILE *fp_acf;
+  double fv2 = acf_fv_sum*acf_fv_sum/(acf_fv_count*acf_fv_count);
+  double var0 = acf_sum[0]/acf_count[0] - fv2;
+  
+  fp_acf = fopen(acf_outfile,"w");
+  if((fp_acf != NULL)&&(acf_count[0]>0)) {
+    for(i=0;i<acf_maxindex;i++) {
+      fprintf(fp_acf,"%lf %20.10e\n",i*outputstep*epsilon,(acf_sum[i]/acf_count[i] - fv2)/var0);
+    }
+  }
+  fclose(fp_acf);
+}
+
+
+
+// ************************************************************
+// **   average popdens
+// ************************************************************
+
+void init_averagepopdens() {
+  
+  averagepopdens_dx = dx/(1.*averagepopdens_resolution);
+  averagepopdens_space = space*averagepopdens_resolution;
+  averagepopdens_space0 = space0*averagepopdens_resolution;
+  
+  averagepopdens_dens = (double*)calloc(averagepopdens_space,sizeof(double));
+  
+  averagepopdens_lower = (int)(-averagepopdens_resolution/2);
+  averagepopdens_higher = (int)(averagepopdens_resolution/2);
+  if(averagepopdens_higher - averagepopdens_lower < averagepopdens_resolution)averagepopdens_higher++;
+  
+}
+
+
+void update_averagepopdens() {
+  int i,j,idx;
+  int offset=0;
+  
+  if(averagepopdens_center) {
+    offset = (int)(current_mean_fitness/dx*averagepopdens_resolution);
+  }
+  
+  for(i=0;i<space;i++) {
+    for(j=averagepopdens_lower;j<averagepopdens_higher;j++) {
+      idx = i*averagepopdens_resolution+j-offset;
+      if((averagepopdens_space > idx) &&( idx >= 0))
+	averagepopdens_dens[idx] += nn[i];
+    }
+  }
+  
+  averagepopdens_count += 1.;
+  
+}
+
+
+void write_averagepopdens() {
+  int i;
+  FILE *fp;
+  
+  if(averagepopdens_havefile == 1) {
+    fp = fopen(averagepopdens_outputfile,"w");
+  }else{
+    fp = stdout;
+  }
+  
+  for(i=0;i<averagepopdens_space;i++) {
+    fprintf(fp,"%lf %e\n",(i-averagepopdens_space0)*averagepopdens_dx,averagepopdens_dens[i]/averagepopdens_count);
+  }
+  
+  if(averagepopdens_havefile == 1) {
+    fclose(fp);
+  }
+  
+  free(averagepopdens_dens);
+}
+
+  
+// ************************************************************
+// **   main algorithm
+// ************************************************************
+
+
+
+
+void populationconstraint(int timestep) {
+  int i,j;
+  double sum = 0., inv;
+  int baseshift;
+  double fracshift;
+  
+/*  
+  for(i=0;i<space;i++) {
+    printf("%lf %e %e\n ",(i-space0)*dx,u[i],nn[i]);
+  }
+  exit(1);*/
+  
+  if(noise == 2) {
+    baseshift = (int)(timestep*epsilon*wavespeed/dx) - allshifts;
+    fracshift = timestep*epsilon*wavespeed/dx - 1.*(baseshift + allshifts);
+    
+    for(i=0;i<baseshift;i++)ucmf[i] = 0;
+    for(i=baseshift;i<space;i++) {
+      ucmf[i] = fracshift * u[i-baseshift+1] + (1.-fracshift) * u[i-baseshift];
+    }
+  }
+    
+
+  
+  popdens_0thmom = 0;
+  popdens_1stmom = 0;
+  popdens_2ndmom = 0;
+  
+  for(i=0;i<space;i++) {
+    sum += nn[i]*ucmf[i];
+    popdens_0thmom += nn[i];
+    popdens_1stmom += i*nn[i];
+    popdens_2ndmom += i*i*nn[i];
+  }
+  popdens_1stmom *= dx;
+  popdens_2ndmom *= dx*dx;
+  
+  populationsize = popdens_0thmom;
+  populationvariance = popdens_2ndmom/popdens_0thmom - popdens_1stmom*popdens_1stmom/(popdens_0thmom*popdens_0thmom);
+  
+  inv = 1./(sum);
+  for(i=0;i<space;i++) nn[i] *= inv;
+//   printf("%d %e\n",timestep,sum);
+}
+
+
+
+void update_mean_fit() {
+  int i;
+  current_mean_fitness = 0.;
+  populationsize = 0.;
+  for(i=0;i<space;i++) {
+    current_mean_fitness += (i-space0)*nn[i];
+    populationsize += nn[i];
+  }
+  current_mean_fitness *= dx/populationsize;
+}
+  
+
+
+void shift_population_backward(int step) {
+  int i;
+  for(i=0;i<space-step;i++)     nn[i] = nn[i+step];
+  for(i=space-step;i<space;i++) nn[i] = 0.;
+}
+
+
+void shift_population_forward(int step) {
+  int i;
+  for(i=space-1;i>step;i--) nn[i] = nn[i-step];
+  for(i=step;i>=0;i--)      nn[i] = 0.;
+}
+
+
+void shift_population(int timestep) {
+  int shift = (int)floor(current_mean_fitness/dx);
+  if(shift >= shiftthreshold) {shift_population_backward(shift);}
+  if(shift <= -shiftthreshold) {shift_population_forward(shift);}
+  allshifts += shift;
+  current_mean_fitness -= shift*dx;
+}
+
+void reproduce(int timestep) {
+  int i,j;
+  double tmpn;
+  
+  
+  if(noise < 2) {
+    update_mean_fit();
+  }else if(noise == 2) {
+    current_mean_fitness = timestep*wavespeed*epsilon - allshifts*dx;
+  }
+  
+  if((current_mean_fitness > dx) || (current_mean_fitness < -dx))shift_population(timestep);
+      
+  nn[0] = 0;
+  nn[space-1] = 0;
+
+  for(i=1;i<space-1;i++) {
+    tmpn = nn[i]*(1.+(x[i]-mutationrate-current_mean_fitness)*epsilon);
+    for(j = 1;j<=i;j++) tmpn += mutation_inflow[j]*nn[i-j];
+    if(tmpn<0) {
+      tmpn = 0;
+    }else if(noise > 0) {
+      tmpn += twoepssqrt*(gsl_ran_poisson(rg,tmpn)-tmpn);
+    }
+    nn[i] = tmpn;
+  }
+}
+
+
+
+
+
+// ************************************************************
+// **   cleanup
+// ************************************************************
+
+
+  
+void cleanup() {
+  free(nn);
+  free(tmp);
+  free(acf_count);
+  free(acf_sum);
+  free(acf_fv_pastvalues);
+  free(x);
+  if(noise == 2) {
+    free(u);
+    free(ucmf);
+  }
+}
+
+
+
+// ************************************************************
+// **   main
+// ************************************************************
+
+
+int main(int argn, char *argv[]) {
+  int i;
+  double v;
+  int last_allshifts;
+  
+  parsecomamndline(argn,argv);
+  initialize();
+  populationconstraint(0);
+  if(averagepopdens) {
+    init_averagepopdens();
+  }
+  
+  if (quiet<2) fprintf(stdout,"%10.3lf %20.10e %.10e %.10e\n",i*epsilon,current_mean_fitness+allshifts*dx,populationvariance,populationsize);
+  for(i=1;i<=maxSteps;i++) {
+    reproduce(i);
+    populationconstraint(i);
+    
+    if(i%outputstep == 0) {
+      if (acf) update_acf(i,populationvariance);
+      if (quiet<2) fprintf(stdout,"%10.3lf %20.10e %.10e %.10e\n",i*epsilon,current_mean_fitness+allshifts*dx,populationvariance,populationsize);
+      if (quiet==0) print_populationdensity(i);
+      if (averagepopdens) update_averagepopdens();
+    }
+    last_allshifts = allshifts;
+  }
+  
+  if(acf)write_acf();
+  if(write_to_file)write_popdens();
+  if(averagepopdens)write_averagepopdens();
+  cleanup();
+  return 0;
+}
+
