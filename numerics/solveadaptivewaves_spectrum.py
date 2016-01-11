@@ -6,6 +6,7 @@ import argparse
 import sys,math
 
 parser = argparse.ArgumentParser()
+parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
 parser.add_argument("-u","--ufile")
 parser.add_argument("-v","--speed",type=float,default=1)
 parser.add_argument("-m","--mutationrate",type=float,default=1e-2)
