@@ -85,6 +85,8 @@ for i in range(args.maxsteps):
 	if i%args.outputstep == 0:
 	    print >> sys.stderr,i,np.dot(u*u,c)*dx
 
+if args.outfile == None:    fp = sys.stdout
+else:                       fp = open(args.outfile,"w")
 for i in range(space):
-    print "%lf %.14e"%(x[i],c[i])
-    
+    print >>fp, "%lf %.14e"%(x[i],c[i])
+fp.close()

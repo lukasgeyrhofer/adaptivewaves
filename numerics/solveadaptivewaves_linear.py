@@ -20,7 +20,7 @@ parser_lattice.add_argument("-s","--space",type=int,default=2000,help="Number of
 parser_lattice.add_argument("-z","--zero",type=int,default=1000,help="Position of Zero on lattice")
 parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice spacing")
 
-parser_params = parser.add_argument_group(description="####   Profile parameters    ####")
+parser_params = parser.add_argument_group(description="####   Profile parameters   ####")
 parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed (default: 1)")
 parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff",help="Mutation kernel (default: \"diff\")")
 parser_params.add_argument("-m","--mutationrate",type=float,default=1e-2,help="Mutation rate (only used for exp kernel, default: 1e-2)")

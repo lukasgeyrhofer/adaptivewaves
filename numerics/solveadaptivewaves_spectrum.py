@@ -7,11 +7,13 @@ import sys,math
 
 parser = argparse.ArgumentParser()
 parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
-parser.add_argument("-u","--ufile")
-parser.add_argument("-v","--speed",type=float,default=1)
-parser.add_argument("-m","--mutationrate",type=float,default=1e-2)
-parser.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff")
-parser.add_argument("-G","--growthterm",choices=("selection","step"),default="selection")
+parser_alg.add_argument("-u","--ufile")
+
+parser_params = parser.add_argument_group(description="####   Profile parameters   ####")
+parser_params.add_argument("-v","--speed",type=float,default=1)
+parser_params.add_argument("-m","--mutationrate",type=float,default=1e-2)
+parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff")
+parser_params.add_argument("-G","--growthterm",choices=("selection","step"),default="selection")
 args = parser.parse_args()
 
 try:
