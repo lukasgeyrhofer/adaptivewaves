@@ -7,15 +7,16 @@ import sys
 parser = argparse.ArgumentParser()
 
 parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
-parser_alg.add_argument("-u","--ufile",default=None,description="File with profile for fixation probability (n=1)")
 parser_alg_c = parser_alg.add_mutually_exclusive_group()
 parser_alg_c.add_argument("-i","--c2file",default=None,description="Start with previous 2d profile")
 parser_alg_c.add_argument("-c","--c1file",default=None,description="Start by expanding 1d profile")
+parser_alg.add_argument("-u","--ufile",default=None,description="File with profile for fixation probability (n=1)")
 parser_alg.add_argument("-a","--alpha",type=float,default=1)
 parser_alg.add_argument("-S","--maxsteps",type=int,default=10)
 
 parser_params = parser.add_argument_group(description="####   Profile parameters   ####")
 parser_params.add_argument("-v","--speed",default=1,type=float)
+
 args = parser.parse_args()
 
 
@@ -57,10 +58,11 @@ coeff_00    = -4*np.ones((space,space))/(dx*dx) + np.outer(x-3*u,np.ones(space))
 
 for i in range(args.maxsteps):
     print >> sys.stderr,i
-    c2_xprev = np.concatenate(( np.reshape(2*c2[:,0]-c2[:,1],(space,1)),  c2[:,:-1] ),axis=1)
-    c2_xnext = np.concatenate(( c2[:,1:], np.reshape(2*c2[:,-1]-c2[:,-2],(space,1)) ),axis=1)
-    c2_yprev = np.concatenate(( np.reshape(2*c2[0,:]-c2[1,:],(1,space)),  c2[:-1,:] ),axis=0)
-    c2_ynext = np.concatenate(( c2[1:,:], np.reshape(2*c2[-1,:]-c2[-2,:],(1,space)) ),axis=0)
+    c2_xprev = np.concatenate(( np.reshape(2*c2[:,0]-c2[:,1],(space,1)),  c2[:,:-1] ),axis=1)   # assume profile extends linearly,
+    c2_xnext = np.concatenate(( c2[:,1:], np.reshape(2*c2[:,-1]-c2[:,-2],(space,1)) ),axis=1)   # which is much faster than an
+    c2_yprev = np.concatenate(( np.reshape(2*c2[0,:]-c2[1,:],(1,space)),  c2[:-1,:] ),axis=0)   # exponential decay, where one has
+    c2_ynext = np.concatenate(( c2[1:,:], np.reshape(2*c2[-1,:]-c2[-2,:],(1,space)) ),axis=0)   # to check for each element == 0
+                                                                                                # to be allowed to divide elements
     
     f  = coeff_xnext * c2_xnext + coeff_xprev * c2_xprev
     f += coeff_ynext * c2_ynext + coeff_yprev * c2_yprev
