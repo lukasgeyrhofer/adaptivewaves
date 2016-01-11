@@ -74,7 +74,7 @@ if args.mutationmodel == "exp":
 
 for i in range(args.maxsteps):
     c_prev = np.concatenate((np.array(c[0]*c[0]/c[1]) if c[1]>0 else np.zeros(1),c[:-1]))
-    c_next = np.concatenate((c[1:],np.array(c[0]*c[0]/c[1]) if c[1]>0 else np.zeros(1)))
+    c_next = np.concatenate((c[1:],np.array(c[-1]*c[-1]/c[-2]) if c[-2]>0 else np.zeros(1)))
   
     f  = coeff_prev * c_prev + coeff_0 * c + coeff_next * c_next
     fc = coeff_0
