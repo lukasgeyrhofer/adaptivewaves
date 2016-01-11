@@ -5,9 +5,9 @@ from scipy.special import airy
 import sys,math
 import argparse
 
-parser = argparse.ArgumentParser(description="Numerical solution for fixation probabilities (n=1) in traveling wave models of adaptation with diffusion and exponential mutation kernels")
+parser = argparse.ArgumentParser(description="Numerical solution for fixation probabilities (n=1) in traveling wave models of asexual adaptation with diffusion and exponential mutation kernels (using reduced units)")
 
-parser_alg = parser.add_argument_group(description="Algorithm and IO parameters")
+parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
 parser_alg.add_argument("-i","--infile",help="start from profile given by INFILE")
 parser_alg.add_argument("-o","--outfile",default=None,help="write output to OUTFILE instead of stdout")
 parser_alg.add_argument("-S","--maxsteps",type=int,default=10000)
@@ -15,15 +15,16 @@ parser_alg.add_argument("-R","--redblack",action="store_true",default=False,help
 parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="Slower convergence but more stability for alpha<1")
 parser_alg.add_argument("-B","--enforceboundaries",action="store_true",default=False,help="Force solution to positive (and bounded) values")
 
-parser_lattice = parser.add_argument_group(description="Lattice parameters")
+parser_lattice = parser.add_argument_group(description="####   Lattice parameters   ####")
 parser_lattice.add_argument("-s","--space",type=int,default=2000,help="Number of lattice points")
 parser_lattice.add_argument("-z","--zero",type=int,default=1000,help="Position of Zero on lattice")
 parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice spacing")
 
-parser_params = parser.add_argument_group(description="Profile parameters")
+parser_params = parser.add_argument_group(description="####   Profile parameters    ####")
 parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed (default: 1)")
 parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff",help="Mutation kernel (default: \"diff\")")
 parser_params.add_argument("-m","--mutationrate",type=float,default=1e-2,help="Mutation rate (only used for exp kernel, default: 1e-2)")
+parser_params.add_argument("-G","--growthterm",choices=("selection","step"),default="selection",help="Growth is either given by linear gradient for adaptation (\"selection\") or as step function for Fisher waves (\"step\")") 
 
 args = parser.parse_args()
 
@@ -48,37 +49,51 @@ except:
     x = (np.arange(space)-space0)*dx
     
     # use semianalytical approximations as starting conditions
-    if args.mutationmodel == "diff":
-        uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
-        u = uairy
-        firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
-        idxmax = u[:firstAiZero].argmax()
-        u = u/u[idxmax]*x[idxmax]/2
-        u[idxmax:] = x[idxmax:]/2
-    elif args.mutationmodel == "exp":
-        popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate # inverting relation in Good et al. (2012)
-        idxcrossover1 = ((x-speed)**2).argmin()
-        idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin()
-        u = np.zeros(space)
-        if idxcrossover1 < idxcrossover2:
-            u[idxcrossover2:]              = x[idxcrossover2:]/2
-            u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
-            u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
-        else:
-            u[idxcrossover2:] = x[idxcrossover2:]/2
-            u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
+    if args.growthterm == "selection":
+	if args.mutationmodel == "diff":
+	    uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
+	    u = uairy
+	    firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
+	    idxmax = u[:firstAiZero].argmax()
+	    u = u/u[idxmax]*x[idxmax]/2
+	    u[idxmax:] = x[idxmax:]/2
+	elif args.mutationmodel == "exp":
+	    popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in Good et al. (2012)
+	    idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
+	    idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
+	    u = np.zeros(space)
+	    if idxcrossover1 < idxcrossover2:
+		u[idxcrossover2:]              = x[idxcrossover2:]/2
+		u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
+		u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
+	    else:
+		u[idxcrossover2:] = x[idxcrossover2:]/2
+		u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
+    elif args.growthterm == "step":
+	u = np.exp(x)
+	u[x>0] = 1
 
 if args.enforceboundaries:
   maxvalue = (space-space0)*dx
 
+
+if args.growthterm == "selection":
+    growth = x
+    dgrowth = np.ones(space)
+elif args.growthterm == "step":
+    growth = np.zeros(space)
+    growth[x>=0] = 1
+    dgrowth = np.zeros(space)
+    dgrowth[space0] = 1/dx
+
 if args.mutationmodel == "diff":
     coeff_prev =  1./(dx*dx) + 0.5*speed/dx
     coeff_next =  1./(dx*dx) - 0.5*speed/dx
-    coeff_0    = -2./(dx*dx) + x
+    coeff_0    = -2./(dx*dx) + growth
 elif args.mutationmodel == "exp":
     coeff_prev = speed/(dx*dx) + 0.5*(speed - mutationrate + x)/dx
     coeff_next = speed/(dx*dx) - 0.5*(speed - mutationrate + x)/dx
-    coeff_0    = -2*speed/(dx*dx) + x - 1
+    coeff_0    = -2*speed/(dx*dx) + growth - dgrowth
 
 # coupled Newton-Raphson iterations for each lattice point
 for i in range(args.maxsteps):
