@@ -9,6 +9,7 @@ parser = argparse.ArgumentParser()
 parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
 parser_alg.add_argument("-i","--infile",help="start from profile given by INFILE")
 parser_alg.add_argument("-o","--outfile",default=None,help="write output to OUTFILE instead of stdout")
+parser_alg.add_argument("-u","--ufile",help="File with profile for fixation probability (n=1)")
 parser_alg.add_argument("-S","--maxsteps",type=int,default=10000)
 parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="Slower convergence but more stability for alpha<1")
 parser_alg.add_argument("-O","--outputstep",type=int,default=0,help="print expression <uu|c> at each OUTPUTSTEP steps to show convergence (default: 0 [=OFF])")
@@ -26,9 +27,9 @@ try:
     udata = np.genfromtxt(args.ufile)
     x = udata[:,0]
     u = udata[:,1]
-    space = len(x)
+    space  = len(x)
     space0 = (x*x).argmin()
-    dx = x[1] - x[0]
+    dx     = x[1] - x[0]
 except:
     print >> sys.stderr,"could not open ufile"
     exit(1)
@@ -43,8 +44,6 @@ except:
     speed = args.speed
     mutationrate= args.mutationrate
     c = np.exp(-x*x/(2*speed))
-    xcrossover = (derivative(u,2)).argmin()
-    c[xcrossover:] = np.exp(-(speed-mutationrate)*(x[xcrossover:]-x[xcrossover])/speed)*c[xcrossover]
     norm = np.dot(u,c)*dx
     c/=norm
 
@@ -71,10 +70,9 @@ if args.mutationmodel == "exp":
     coeff_next = speed/(dx*dx) + 0.5*(speed-mutationrate+growth-2*u)/dx
     coeff_0    = -2*speed/(dx*dx) + growth - 2*u + dgrowth - 2*du
     
-
 for i in range(args.maxsteps):
-    c_prev = np.concatenate((np.array(c[0]*c[0]/c[1]) if c[1]>0 else np.zeros(1),c[:-1]))
-    c_next = np.concatenate((c[1:],np.array(c[-1]*c[-1]/c[-2]) if c[-2]>0 else np.zeros(1)))
+    c_prev = np.concatenate((np.array([c[0]*c[0]/c[1]]) if c[1]>0 else np.zeros(1),c[:-1]))
+    c_next = np.concatenate((c[1:],np.array([c[-1]*c[-1]/c[-2]]) if c[-2]>0 else np.zeros(1)))
   
     f  = coeff_prev * c_prev + coeff_0 * c + coeff_next * c_next
     fc = coeff_0
