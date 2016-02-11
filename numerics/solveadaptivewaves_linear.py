@@ -22,11 +22,19 @@ parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice sp
 
 parser_params = parser.add_argument_group(description="####   Profile parameters (in reduced units)  ####")
 parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed [default: 1]")
-parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default="diff",help="Mutation kernel [default: \"diff\"]")
-parser_params.add_argument("-m","--mutationrate",type=float,default=1e-2,help="Mutation rate used in exponential mutation kernel. Value is ignored for diffusion mutation kernel. [default: 1e-2]")
+parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default=None,help="Mutation kernel")
+parser_params.add_argument("-m","--mutationrate",type=float,default=None,help="Mutation rate used in exponential mutation kernel. Value is ignored for diffusion mutation kernel. [default: 1e-2]")
 parser_params.add_argument("-G","--growthterm",choices=("selection","step"),default="selection",help="Growth is either given by linear gradient for adaptation (\"selection\") or as step function for Fisher waves (\"step\") [default: selection]") 
 
 args = parser.parse_args()
+
+if args.mutationmodel == None:
+    if args.mutationrate == None:
+        mutationmodel = "diff"
+    else:
+        mutationmodel = "exp"
+else:
+    mutationmodel = "diff"
 
 try:
     udata = np.genfromtxt(args.infile)
@@ -36,7 +44,8 @@ try:
     space0       = (x*x).argmin()
     dx           = x[1]-x[0]
     speed        = args.speed
-    mutationrate = args.mutationrate
+    if mutationmodel == "exp":
+        mutationrate = args.mutationrate
 except:
     # could not load file, either because input file was empty/did not exist or some other error while loading
     # thus, start from scratch
@@ -45,7 +54,8 @@ except:
     space        = args.space
     space0       = args.zero
     speed        = args.speed
-    mutationrate = args.mutationrate
+    if args.mutationmodel == "exp":
+        mutationrate = args.mutationrate
     x = (np.arange(space)-space0)*dx
     
     # use semianalytical approximations as starting conditions
@@ -86,11 +96,11 @@ elif args.growthterm == "step":
     dgrowth = np.zeros(space)
     dgrowth[space0] = 1/dx
 
-if args.mutationmodel == "diff":
+if mutationmodel == "diff":
     coeff_prev =  1./(dx*dx) + 0.5*speed/dx
     coeff_next =  1./(dx*dx) - 0.5*speed/dx
     coeff_0    = -2./(dx*dx) + growth
-elif args.mutationmodel == "exp":
+elif mutationmodel == "exp":
     coeff_prev = speed/(dx*dx) + 0.5*(speed - mutationrate + x)/dx
     coeff_next = speed/(dx*dx) - 0.5*(speed - mutationrate + x)/dx
     coeff_0    = -2*speed/(dx*dx) + growth - dgrowth
@@ -105,7 +115,7 @@ for i in range(args.maxsteps):
     fu = coeff_0 - 4*u
     
     # more nonlinear terms with exponential kernel
-    if args.mutationmodel == "exp":
+    if mutationmodel == "exp":
         f  += 2*(u_next - u_prev)*u/dx
         fu += 2*(u_next - u_prev)/dx
     
