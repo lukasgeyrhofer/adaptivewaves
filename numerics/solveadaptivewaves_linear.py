@@ -60,14 +60,14 @@ except:
     
     # use semianalytical approximations as starting conditions
     if args.growthterm == "selection":
-	if args.mutationmodel == "diff":
+	if mutationmodel == "diff":
 	    uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
 	    u = uairy
 	    firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
 	    idxmax = u[:firstAiZero].argmax()
 	    u = u/u[idxmax]*x[idxmax]/2
 	    u[idxmax:] = x[idxmax:]/2
-	elif args.mutationmodel == "exp":
+	elif mutationmodel == "exp":
 	    popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in Good et al. (2012)
 	    idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
 	    idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
