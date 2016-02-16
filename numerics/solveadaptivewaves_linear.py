@@ -62,6 +62,9 @@ except:
     if args.growthterm == "selection":
         try:
             if mutationmodel == "diff":
+                # solution is proportial to exp(vx/2)Airy(v^2/4-x) for small fitness (by neglecting nonlinear term)
+                # Airy function is oscillating, however, thus find first zero of it, and approximate u by its
+                # linear branch starting at the maximum of the asymptotic solution above (before its first zero)
                 uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
                 u = uairy
                 firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
@@ -69,7 +72,8 @@ except:
                 u = u/u[idxmax]*x[idxmax]/2
                 u[idxmax:] = x[idxmax:]/2
             elif mutationmodel == "exp":
-                popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in Good et al. (2012)
+                # from semianalytic considerations we know u has three regimes (see [Geyrhofer, 2014], also defined in [Good et al., 2012])
+                popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in [Good et al., 2012]
                 idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
                 idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
                 u = np.zeros(space)
@@ -82,10 +86,10 @@ except:
                     u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
         except:
             # if anything in the more elaborate approximations fails, fall back to most basic approximation
-            u = x/2
-            u[x<=0] = u[space0+1]*np.exp(x[x<=0])
+            u       = x/2
+            u[x<=0] = np.exp(x[x<=0])*u[space0+1]
     elif args.growthterm == "step":
-	u = np.exp(x)
+	u      = np.exp(x)
 	u[x>0] = 1
 
 if args.enforceboundaries:
