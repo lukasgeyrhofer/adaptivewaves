@@ -83,7 +83,7 @@ except:
         except:
             # if anything in the more elaborate approximations fails, fall back to most basic approximation
             u = x/2
-            u[x<=0] = u[space0+1]*np.exp(-x[x<=0])
+            u[x<=0] = u[space0+1]*np.exp(x[x<=0])
     elif args.growthterm == "step":
 	u = np.exp(x)
 	u[x>0] = 1
