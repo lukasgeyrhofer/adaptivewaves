@@ -60,25 +60,30 @@ except:
     
     # use semianalytical approximations as starting conditions
     if args.growthterm == "selection":
-	if args.mutationmodel == "diff":
-	    uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
-	    u = uairy
-	    firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
-	    idxmax = u[:firstAiZero].argmax()
-	    u = u/u[idxmax]*x[idxmax]/2
-	    u[idxmax:] = x[idxmax:]/2
-	elif args.mutationmodel == "exp":
-	    popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in Good et al. (2012)
-	    idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
-	    idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
-	    u = np.zeros(space)
-	    if idxcrossover1 < idxcrossover2:
-		u[idxcrossover2:]              = x[idxcrossover2:]/2
-		u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
-		u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
-	    else:
-		u[idxcrossover2:] = x[idxcrossover2:]/2
-		u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
+        try:
+            if mutationmodel == "diff":
+                uairy =  np.exp(speed*x/2.)*airy(speed**2/4.-x)[0]
+                u = uairy
+                firstAiZero = min(int((2.3381-speed**2/4)/dx)+space0,space-1)
+                idxmax = u[:firstAiZero].argmax()
+                u = u/u[idxmax]*x[idxmax]/2
+                u[idxmax:] = x[idxmax:]/2
+            elif mutationmodel == "exp":
+                popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in Good et al. (2012)
+                idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
+                idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
+                u = np.zeros(space)
+                if idxcrossover1 < idxcrossover2:
+                    u[idxcrossover2:]              = x[idxcrossover2:]/2
+                    u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
+                    u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
+                else:
+                    u[idxcrossover2:] = x[idxcrossover2:]/2
+                    u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
+        except:
+            # if anything in the more elaborate approximations fails, fall back to most basic approximation
+            u = x/2
+            u[x<=0] = u[space0+1]*np.exp(x[x<=0])
     elif args.growthterm == "step":
 	u = np.exp(x)
 	u[x>0] = 1
