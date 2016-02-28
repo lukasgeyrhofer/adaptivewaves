@@ -23,7 +23,7 @@ parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice sp
 parser_params = parser.add_argument_group(description="####   Profile parameters (in reduced units)  ####")
 parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed [default: 1]")
 parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default=None,help="Mutation kernel")
-parser_params.add_argument("-m","--mutationrate",type=float,default=None,help="Mutation rate used in exponential mutation kernel. Value is ignored for diffusion mutation kernel. [default: 1e-2]")
+parser_params.add_argument("-m","--mutationrate",type=float,default=None,help="Mutation rate used in exponential mutation kernel. Value is ignored for diffusion mutation kernel. [default: None]")
 parser_params.add_argument("-G","--growthterm",choices=("selection","step"),default="selection",help="Growth is either given by linear gradient for adaptation (\"selection\") or as step function for Fisher waves (\"step\") [default: selection]") 
 
 args = parser.parse_args()
@@ -47,7 +47,7 @@ try:
     if mutationmodel == "exp":
         mutationrate = args.mutationrate
 except:
-    # could not load file, either because input file was empty/did not exist or some other error while loading
+    # could not load file, either because input file was not provided (no -i option), did not exist or some other error while loading
     # thus, start from scratch
     print >> sys.stderr,"# starting from scratch"
     dx           = args.dx
@@ -143,8 +143,9 @@ for i in range(args.maxsteps):
 # output
 if args.outfile == None:    fp = sys.stdout
 else:                       fp = open(args.outfile,"w")
+
 for i in range(space):
   print >> fp,"%lf %.14e"%(x[i],u[i])
 
-fp.close()
+if args.outfile != None:    fp.close()
 
