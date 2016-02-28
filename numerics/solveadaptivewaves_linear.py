@@ -54,7 +54,7 @@ except:
     space        = args.space
     space0       = args.zero
     speed        = args.speed
-    if args.mutationmodel == "exp":
+    if mutationmodel == "exp":
         mutationrate = args.mutationrate
     x = (np.arange(space)-space0)*dx
     
