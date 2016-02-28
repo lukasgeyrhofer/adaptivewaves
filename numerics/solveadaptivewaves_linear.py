@@ -73,17 +73,18 @@ except:
                 u[idxmax:] = x[idxmax:]/2
             elif mutationmodel == "exp":
                 # from semianalytic considerations we know u has three regimes (see [Geyrhofer, 2014], also defined in [Good et al., 2012])
-                popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in [Good et al., 2012]
+                try:
+                    popsize = np.exp(np.sqrt(2.*np.log(1./mutationrate)*speed))/mutationrate          # inverting relation in [Good et al., 2012]
+                    idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
+                except:
+                    idxcrossover2 = 0
                 idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
-                idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
-                u = np.zeros(space)
+                u = x/2
                 if idxcrossover1 < idxcrossover2:
-                    u[idxcrossover2:]              = x[idxcrossover2:]/2
                     u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
                     u[:idxcrossover1]              = u[idxcrossover1]*np.exp(x[:idxcrossover1])
                 else:
-                    u[idxcrossover2:] = x[idxcrossover2:]/2
-                    u[:idxcrossover2] = u[idxcrossover2]*np.exp(x[:idxcrossover2])
+                    u[:idxcrossover1] = u[idxcrossover1]*np.exp(x[:idxcrossover2])
         except:
             # if anything in the more elaborate approximations fails, fall back to most basic approximation
             u       = x/2
