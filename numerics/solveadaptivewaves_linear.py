@@ -36,6 +36,8 @@ if args.mutationmodel == None:
         mutationrate = args.mutationrate
 else:
     mutationmodel = args.mutationmodel
+    if mutationmodel == "exp":
+        mutationrate = args.mutationrate
 
 try:
     udata = np.genfromtxt(args.infile)
