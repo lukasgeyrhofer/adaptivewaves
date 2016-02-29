@@ -33,6 +33,7 @@ if args.mutationmodel == None:
         mutationmodel = "diff"
     else:
         mutationmodel = "exp"
+        mutationrate = args.mutationrate
 else:
     mutationmodel = args.mutationmodel
 
@@ -44,8 +45,7 @@ try:
     space0       = (x*x).argmin()
     dx           = x[1]-x[0]
     speed        = args.speed
-    if mutationmodel == "exp":
-        mutationrate = args.mutationrate
+
 except:
     # could not load file, either because input file was not provided (no -i option), did not exist or some other error while loading
     # thus, start from scratch
@@ -54,8 +54,6 @@ except:
     space        = args.space
     space0       = args.zero
     speed        = args.speed
-    if mutationmodel == "exp":
-        mutationrate = args.mutationrate
     x = (np.arange(space)-space0)*dx
     
     # use semianalytical approximations as starting conditions
