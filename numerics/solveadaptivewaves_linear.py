@@ -34,7 +34,7 @@ if args.mutationmodel == None:
     else:
         mutationmodel = "exp"
 else:
-    mutationmodel = "diff"
+    mutationmodel = args.mutationmodel
 
 try:
     udata = np.genfromtxt(args.infile)
