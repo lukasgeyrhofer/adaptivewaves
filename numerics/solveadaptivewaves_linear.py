@@ -14,6 +14,7 @@ parser_alg.add_argument("-S","--maxsteps",type=int,default=10000,help="Number of
 parser_alg.add_argument("-R","--redblack",action="store_true",default=False,help="Iterate even or odd lattice points alternatively, helps with stability. Should be used for profiles of fixation probabilities [default: OFF]")
 parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="'Speed' of Newton-Raphson iteration: u/c -= alpha f/f'. Classical NR: alpha=1. Slower convergence but more stability for alpha<1 [default: 1]")
 parser_alg.add_argument("-B","--enforceboundaries",action="store_true",default=False,help="Force solution to positive (and bounded) values [default: OFF]")
+parser_alg.add_argument("-F","--fixupperboundary",action="store_true",default=False,help="Force upper boundary to have the value x/2-v/2x [default: OFF, only linear increase]")
 
 parser_lattice = parser.add_argument_group(description="####   Lattice parameters   ####")
 parser_lattice.add_argument("-s","--space",type=int,default=2000,help="Number of lattice points [default: 2000]")
@@ -119,7 +120,10 @@ elif mutationmodel == "exp":
 for i in range(args.maxsteps):
     # shift profile for terms with derivatives
     u_prev = np.concatenate((np.array([u[0]*u[0]/u[1]]) if u[1]>0 else np.zeros(1),u[:-1])) # exponential decay before lattice
-    u_next = np.concatenate((u[1:],np.array([2*u[-1]-u[-2]])))                              # linear increase after lattice
+    if args.fixupperboundary:   u_next = np.concatenate((u[1:],np.array([0.5*(x[space-1]+dx)-0.5*(speed-mutationrate)/(x[space-1]+dx)])))
+                                                                                            # use asymptotic expansion u(x) = x/2 - (v-m)/2x for large x to keep
+                                                                                            # boundary fixed. This might prevent "leaking" ...
+    else:                       u_next = np.concatenate((u[1:],np.array([2*u[-1]-u[-2]])))  # linear increase after lattice
     
     f  = coeff_prev * u_prev + coeff_0 * u + coeff_next * u_next - 2.*u*u
     fu = coeff_0 - 4*u
