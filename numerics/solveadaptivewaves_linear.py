@@ -32,6 +32,7 @@ args = parser.parse_args()
 if args.mutationmodel == None:
     if args.mutationrate == None:
         mutationmodel = "diff"
+        mutationrate = 0
     else:
         mutationmodel = "exp"
         mutationrate = args.mutationrate
@@ -39,6 +40,8 @@ else:
     mutationmodel = args.mutationmodel
     if mutationmodel == "exp":
         mutationrate = args.mutationrate
+    else:
+        mutationrate = 0
 
 try:
     udata = np.genfromtxt(args.infile)
@@ -112,8 +115,8 @@ if mutationmodel == "diff":
     coeff_next =  1./(dx*dx) - 0.5*speed/dx
     coeff_0    = -2./(dx*dx) + growth
 elif mutationmodel == "exp":
-    coeff_prev = speed/(dx*dx) + 0.5*(speed - mutationrate + x)/dx
-    coeff_next = speed/(dx*dx) - 0.5*(speed - mutationrate + x)/dx
+    coeff_prev = speed/(dx*dx) + 0.5*(speed - mutationrate + growth)/dx
+    coeff_next = speed/(dx*dx) - 0.5*(speed - mutationrate + growth)/dx
     coeff_0    = -2*speed/(dx*dx) + growth - dgrowth
 
 # coupled Newton-Raphson iterations for each lattice point
