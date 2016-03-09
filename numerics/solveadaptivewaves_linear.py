@@ -119,12 +119,14 @@ elif mutationmodel == "exp":
     coeff_next = speed/(dx*dx) - 0.5*(speed - mutationrate + growth)/dx
     coeff_0    = -2*speed/(dx*dx) + growth - dgrowth
 
+if args.fixupperboundary:
+    uafterlattice = np.array([0.5*(x[space-1]+dx)-0.5*(speed-mutationrate)/(x[space-1]+dx)])
+
 # coupled Newton-Raphson iterations for each lattice point
 for i in range(args.maxsteps):
     # shift profile for terms with derivatives
     u_prev = np.concatenate((np.array([u[0]*u[0]/u[1]]) if u[1]>0 else np.zeros(1),u[:-1])) # exponential decay before lattice
-    if args.fixupperboundary:   u_next = np.concatenate((u[1:],np.array([0.5*(x[space-1]+dx)-0.5*(speed-mutationrate)/(x[space-1]+dx)])))
-                                                                                            # use asymptotic expansion u(x) = x/2 - (v-m)/2x for large x to keep
+    if args.fixupperboundary:   u_next = np.concatenate((u[1:],uafterlattice))              # use asymptotic expansion u(x) = x/2 - (v-m)/2x for large x to keep
                                                                                             # boundary fixed. This might prevent "leaking" ...
     else:                       u_next = np.concatenate((u[1:],np.array([2*u[-1]-u[-2]])))  # linear increase after lattice
     
