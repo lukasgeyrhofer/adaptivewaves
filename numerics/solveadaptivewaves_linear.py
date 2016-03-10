@@ -123,7 +123,8 @@ if args.fixupperboundary:
     uafterlattice = np.array([0.5*(x[space-1]+dx)-0.5*(speed-mutationrate)/(x[space-1]+dx)])
 
 # coupled Newton-Raphson iterations for each lattice point
-for i in range(args.maxsteps):
+i = 0
+while i < args.maxsteps:
     # shift profile for terms with derivatives
     u_prev = np.concatenate((np.array([u[0]*u[0]/u[1]]) if u[1]>0 else np.zeros(1),u[:-1])) # exponential decay before lattice
     if args.fixupperboundary:   u_next = np.concatenate((u[1:],uafterlattice))              # use asymptotic expansion u(x) = x/2 - (v-m)/2x for large x to keep
@@ -148,6 +149,8 @@ for i in range(args.maxsteps):
     if args.enforceboundaries:
         u[u<0] = 0
         u[u>maxvalue] = maxvalue
+    
+    i += 1
 
 
 # output
