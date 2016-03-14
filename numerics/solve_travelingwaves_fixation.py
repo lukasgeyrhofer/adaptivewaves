@@ -1,32 +1,41 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# ******************************************
-# ***    Numerics for traveling waves    ***
-# ******************************************
 
-# Solve non-linear equation for fixation probabilities u^{(1)} = w/2
-# in tuned models using reduced parameters
-# 
-# Growth can be desribed by either
-#   * step function (invasive waves)
-#   * linear incrase (adaptive waves)
-#
-# Mutation-/Migration can be described by
-#   * diffusive movement
-#   * exponential jump kernel
-#
-# Usage:
-#
-#  ./solvetravelingwaves_fixation.py -v 2 -R -S 1000000
-#
-# to compute profile for diffusive, adaptative waves with (reduced) speed v=2
-#
-#
-# Code can be used as is. If reference is needed then cite
-#   Hallatschek, Geyrhofer, Genetics 202 (3), pp1201-1227, 2016
-#   DOI: 10.1534/genetics.115.181271
-#
+# *************************************************************************** #
+# ***    Numerics for traveling waves                                     *** #
+# *************************************************************************** #
+#                                                                             #
+# Solve non-linear equation for fixation probabilities u^{(1)} = w/2          #
+# in tuned models using reduced parameters                                    #
+#                                                                             #
+# Growth can be desribed by either                                            #
+#   * step function (invasive waves)                                          #
+#   * linear incrase (adaptive waves)                                         #
+#                                                                             #
+# Mutation/Migration can be described by                                      #
+#   * diffusive movement                                                      #
+#   * exponential jump kernel                                                 #
+#                                                                             #
+# Usage:                                                                      #
+#                                                                             #
+#  ./solve_travelingwaves_fixation.py -v 2 -R -S 1000000                      #
+#                                                                             #
+# to compute profile for diffusive, adaptative waves with (reduced)           #
+# speed v=2. Check help for improved description:                             #
+#                                                                             #
+#  ./solve_travelingwaves_fixation.py --help                                  #
+#                                                                             #
+#                                                                             #
+# Code can be used as is. If reference is needed then cite                    #
+#   Hallatschek, Geyrhofer, Genetics 202 (3), pp1201-1227, 2016               #
+#   DOI: 10.1534/genetics.115.181271                                          #
+#                                                                             #
+#                                                                             #
+# Lukas Geyrhofer, 2015 - 2016                                                #
+#                                                                             #
+# *************************************************************************** #
+
 
 import numpy as np
 from scipy.special import airy
