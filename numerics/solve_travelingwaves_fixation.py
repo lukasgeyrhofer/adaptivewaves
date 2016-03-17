@@ -22,7 +22,8 @@
 #  ./solve_travelingwaves_fixation.py -v 2 -R -S 1000000                      #
 #                                                                             #
 # to compute profile for diffusive, adaptative waves with (reduced)           #
-# speed v=2. Check help for improved description:                             #
+# speed v=2 and iterate for 1000000 steps. Check help for                     #
+# improved description:                                                       #
 #                                                                             #
 #  ./solve_travelingwaves_fixation.py --help                                  #
 #                                                                             #
@@ -49,9 +50,9 @@ parser_alg.add_argument("-i","--infile",help="Start iterations from profile spec
 parser_alg.add_argument("-o","--outfile",default=None,help="Write output to OUTFILE instead of stdout")
 parser_alg.add_argument("-S","--maxsteps",type=int,default=10000,help="Number of iteration steps [default: 10000]")
 parser_alg.add_argument("-R","--redblack",action="store_true",default=False,help="Iterate even or odd lattice points alternatively, helps with stability. Should be used for profiles of fixation probabilities [default: OFF]")
-parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="'Speed' of Newton-Raphson iteration: u/c -= alpha f/f'. Classical NR: alpha=1. Slower convergence but more stability for alpha<1 [default: 1]")
+parser_alg.add_argument("-a","--alpha",type=float,default=1.,help="'Speed' of Newton-Raphson iteration: u -= alpha f/f'. Classical NR: alpha=1. Slower convergence but more stability for alpha<1 [default: 1]")
 parser_alg.add_argument("-B","--enforceboundaries",action="store_true",default=False,help="Force solution to positive (and bounded) values [default: OFF]")
-parser_alg.add_argument("-F","--fixupperboundary",action="store_true",default=False,help="Force upper boundary to have the value x/2-v/2x [default: OFF, only linear increase]")
+parser_alg.add_argument("-F","--fixupperboundary",action="store_true",default=False,help="Force upper boundary to have the value x/2-(v-μ)/2x [default: OFF, only linear increase]")
 
 parser_lattice = parser.add_argument_group(description="####   Lattice parameters   ####")
 parser_lattice.add_argument("-s","--space",type=int,default=2000,help="Number of lattice points [default: 2000]")
@@ -60,7 +61,7 @@ parser_lattice.add_argument("-d","--dx",type=float,default=5e-2,help="Lattice sp
 
 parser_params = parser.add_argument_group(description="####   Profile parameters (in reduced units)  ####")
 parser_params.add_argument("-v","--speed",type=float,default=1.,help="Adaptation speed [default: 1]")
-parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default=None,help="Mutation kernel")
+parser_params.add_argument("-M","--mutationmodel",choices=("diff","exp"),default=None,help="Mutation kernel [default: diff]")
 parser_params.add_argument("-m","--mutationrate",type=float,default=None,help="Mutation rate used in exponential mutation kernel. Value is ignored for diffusion mutation kernel. [default: None]")
 parser_params.add_argument("-G","--growthterm",choices=("selection","step"),default="selection",help="Growth is either given by linear gradient for adaptation (\"selection\") or as step function for Fisher waves (\"step\") [default: selection]") 
 
@@ -119,7 +120,7 @@ except:
                     idxcrossover2 = ((x-np.sqrt(2*speed*np.log(popsize*np.sqrt(speed))))**2).argmin() # crossover at x_c
                 except:
                     idxcrossover2 = 0
-                idxcrossover1 = ((x-speed)**2).argmin()                                           # crossover at v
+                idxcrossover1 = ((x-speed)**2).argmin()                                               # crossover at v
                 u = x/2
                 if idxcrossover1 < idxcrossover2:
                     u[idxcrossover1:idxcrossover2] = u[idxcrossover2]*np.exp(x[idxcrossover1:idxcrossover2]**2/(2*speed))
