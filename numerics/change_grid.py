@@ -58,6 +58,10 @@ if nx[-1] > x[-1]:
     increase = (e*sxy-sy*sx)/(e*sxx-sx*sx)
     nu[idx:] = nu[idx] + (nx[idx:]-nx[idx])*increase
 
+
+if args.outfile == None:    fp = sys.stderr
+else:                       fp = open(args.outfile,"w")
 for i in range(space):
-    print "%.6lf %.14e"%(nx[i],nu[i])
+    print >> fp, "%.6lf %.14e"%(nx[i],nu[i])
+if args.outfile != None:    fp.close()
 

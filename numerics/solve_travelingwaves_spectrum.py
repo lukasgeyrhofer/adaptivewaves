@@ -61,6 +61,7 @@ dx     = x[1] - x[0]
 
 # set speed
 speed  = args.speed
+
 # set mutationrate and mutationmodel
 if args.mutationmodel == None:
     if args.mutationrate == None:
@@ -87,7 +88,7 @@ elif args.growthterm == "step":    # invasion waves
     growth = np.zeros(space)
     growth[x>0] = 1.
 
-# effective selection
+# "effective selection"
 s = growth - w
 
 # generate matrices for first and second derivative
@@ -116,7 +117,9 @@ elif mutationmodel == "exp":
                              # first derivative
     A += speed*dx2           # second derative
     
-    B = np.eye(space) + dx1  # exponential mutation kernel also need second matrix for generalized eigenvalue problem
+    B = np.eye(space) + dx1  # exponential mutation kernel also need second matrix
+                             # for generalized eigenvalue problem:
+                             # A v = w B v
 
     # actual computation of eigenvalues
     if args.compute_eigenvectors:
