@@ -28,6 +28,7 @@ import numpy as np
 from scipy import linalg
 import argparse
 import sys,math
+import gc
 
 parser = argparse.ArgumentParser(description = "Compute eigenvalues (and eigenvectors) in tuned traveling wave models")
 parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
@@ -47,14 +48,14 @@ try:
     udata = np.genfromtxt(args.ufile)
 except:
     # an error occurred during loading. aborting
-    print >> sys.stderr,"could not open file for fixation probability profile '%s'"%args.ufile
+    print >> sys.stderr,"ERROR: could not open file for fixation probability profile '%s'\n"%args.ufile
     parser.print_help()
     exit(1)
 
 
 # generate necessary variables and profiles
 x = udata[::args.reduction,0]
-w = 2*2*args.closurelevel/(args.closurelevel + 1 ) * udata[::args.reduction,1] # assume profile was computed for n=1, thus already rescale with additional factor 2
+w = 2*2.*args.closurelevel/(args.closurelevel + 1. ) * udata[::args.reduction,1] # assume profile was computed for n=1, thus already rescale with additional factor 2
 space  = len(x)
 space0 = (x*x).argmin()
 dx     = x[1] - x[0]
@@ -71,7 +72,7 @@ if args.mutationmodel == None:
         mutationrate = args.mutationrate
 else:
     if args.mutationrate != None and args.mutationmodel == "diff":
-        print >> sys.stderr,"Cannot set mutation rate (option -m) in diffusion mutation kernel"
+        print >> sys.stderr,"ERROR: Cannot set mutation rate (option -m) in diffusion mutation kernel\n"
         parser.print_help()
         exit(1)
     mutationmodel = args.mutationmodel
@@ -101,6 +102,11 @@ if mutationmodel == "diff":
     A += speed*dx1           # first derivative
     A += dx2                 # second derivative
     
+    # free memory
+    del dx1
+    del dx2
+    gc.collect()
+    
     # actual computation of eigenvalues
     if args.compute_eigenvectors:
         w,v = linalg.eig(a = A,overwrite_a = True, left = False, right = True )
@@ -110,7 +116,7 @@ if mutationmodel == "diff":
     
 elif mutationmodel == "exp":
     # need derivative of effective selection term
-    ds = 0.5/dx*np.diff(np.concatenate([np.array([2*s[0]-s[1]]),s[:-1]]) + np.concatenate([s[1:],np.array([2*s[-1]-s[-2]])]))
+    ds = 0.5/dx*np.diff(np.concatenate([np.array([2*s[0]-s[1]]),s]) + np.concatenate([s,np.array([2*s[-1]-s[-2]])]))
     
     A  = np.diag(s+ds)       # linear term
     A += np.dot(np.diag(s+speed-mutationrate),dx1)
@@ -121,6 +127,11 @@ elif mutationmodel == "exp":
                              # for generalized eigenvalue problem:
                              # A v = w B v
 
+    # free memory
+    del dx1
+    del dx2
+    gc.collect()
+    
     # actual computation of eigenvalues
     if args.compute_eigenvectors:
         w,v = linalg.eig(a = A,b = B,overwrite_a = True,overwrite_b = True,left = False,right = True )
@@ -130,7 +141,7 @@ elif mutationmodel == "exp":
 
 # output of eigenvalues
 for i in range(len(w)):
-    print i,np.real(ev[i]),np.imag(ev[i])
+    print i,np.real(w[i]),np.imag(w[i])
 
 # if eigenvectors are computed, also print them
 if args.compute_eigenvectors:
