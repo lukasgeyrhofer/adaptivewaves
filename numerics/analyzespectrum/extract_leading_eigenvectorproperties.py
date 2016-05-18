@@ -15,6 +15,7 @@ parser.add_argument("-u","--ufile")
 parser.add_argument("-v","--speed",type=float,default=1)
 parser.add_argument("-m","--mutationrate",type=float,default=1e-2)
 parser.add_argument("-T","--numericnoisethreshold",type=float,default=None)
+parser.add_argument("-P","--reducePhase",action="store_true",default=False)
 args = parser.parse_args()
 
 
@@ -61,14 +62,20 @@ if1       = np.exp(-if1exp)
 phi0 = eigvec0/if0
 phi1 = eigvec1/if1
 
-if not (args.numericnoisethreshold is None):
+potential0 = (s - v - m - eigval[0])**2/(4*v**2) - 0.5*ds/v - m/v
+potential1 = (s - v - m - eigval[1])**2/(4*v**2) - 0.5*ds/v - m/v
+
+if args.reducePhase:
+    eigvec0 *= np.exp(-1j*np.imag(eigval[0])/v*x)
+    eigvec1 *= np.exp(-1j*np.imag(eigval[1])/v*x)
+    phi0    *= np.exp(-0.5*1j*np.imag(eigval[0])/v*x)
+    phi0    *= np.exp(-0.5*1j*np.imag(eigval[1])/v*x)
+    
     eigvec0 /= eigvec0[np.absolute(eigvec0).argmax()]
     eigvec1 /= eigvec1[np.absolute(eigvec1).argmax()]
     phi0    /= phi0[np.absolute(phi0).argmax()]
     phi1    /= phi1[np.absolute(phi1).argmax()]
 
-potential0 = (s - v - m - eigval[0])**2/(4*v**2) - 0.5*ds/v - m/v
-potential1 = (s - v - m - eigval[1])**2/(4*v**2) - 0.5*ds/v - m/v
 
 for i in range(space):
     print "{:6.2f} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e} {:13.6e}"\
