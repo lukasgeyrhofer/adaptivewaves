@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+#   adaptive waves with exponential mutation kernel, 
+#   get the first two eigenvectors from already sorted file
+#   and compute their integrating factor, the "schroedinger" potential and the remaining eigenfunction
+
+
 import numpy as np
 import argparse
 import sys,math
