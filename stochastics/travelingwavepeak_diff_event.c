@@ -227,6 +227,7 @@ void read_popdens(int importparameters) {
     
     if(dcount>0) {
       dval = (double*)malloc(dcount*sizeof(int));
+      fread(dval,sizeof(double),dcount,fp);
       if(dcount >= 2) {
           mutationrate = dval[0];
           wavespeed = dval[1];
@@ -403,7 +404,10 @@ int initialize() {
   x = (double*)malloc(space*sizeof(double));
   for(i=0;i<space;i++)x[i]=(i-space0)*dx;
   mutation_2dx = epsilon*mutationrate/(dx*dx);
-  
+  printf("[init] mdx2 = %e\n",mutation_2dx);
+  printf("[init] eps  = %e\n",epsilon);
+  printf("[init] mr   = %e\n",mutationrate);
+  printf("[init] dx   = %e\n",dx);
   
   if(quiet<2) {
     printf("#################################################################################\n");
@@ -522,13 +526,13 @@ void update_u(int timestep) {
 
 void update_mean_fit() {
   int i;
+  double cur_ps = 0.;
   current_mean_fitness = 0.;
-  populationsize = 0.;
   for(i=0;i<space;i++) {
     current_mean_fitness += (i-space0)*(ww[i]+vv[i]);
-    populationsize += ww[i] + vv[i];
+    cur_ps += ww[i] + vv[i];
   }
-  current_mean_fitness *= dx/populationsize;
+  current_mean_fitness *= dx/cur_ps;
 }
   
 
@@ -548,9 +552,9 @@ void shift_population_backward(int step) {
 
 void shift_population_forward(int step) {
   int i;
-  for(i=space-1;i>step;i--) {
-    ww[i] = ww[i-step];
-    vv[i] = vv[i-step];
+  for(i=space-1;i>-step;i--) {
+    ww[i] = ww[i+step];
+    vv[i] = vv[i+step];
   }
   for(i=step;i>=0;i--) {
     ww[i] = 0.;
@@ -582,7 +586,7 @@ void reproduce(int timestep) {
   if((current_mean_fitness > shiftthreshold*dx) || (current_mean_fitness < -shiftthreshold*dx)) {
     shift_population(timestep);
   }
-      
+
   tmpw[0] = 0;
   tmpw[space-1] = 0;
   
@@ -616,9 +620,9 @@ void reproduce(int timestep) {
     
   }
   
+  
   memcpy(ww,tmpw,space*sizeof(double));
   memcpy(vv,tmpv,space*sizeof(double));
-  
 }
 
 
@@ -767,7 +771,7 @@ int init_subpopulation() {
         default:print_error("label type not implemented");
 		break;
     }
-  
+
     memcpy(subpop_start_ww,ww,space*sizeof(double));
     memcpy(subpop_start_vv,vv,space*sizeof(double));
 }
@@ -832,7 +836,6 @@ int main(int argn, char *argv[]) {
   while(subpop_count_extinctions + subpop_count_fixations < maxSteps) {
     reproduce(i);
     populationconstraint(i);
-    
     
     
     if(i%outputstep == 0) {
