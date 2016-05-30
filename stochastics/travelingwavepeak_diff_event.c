@@ -404,11 +404,7 @@ int initialize() {
   x = (double*)malloc(space*sizeof(double));
   for(i=0;i<space;i++)x[i]=(i-space0)*dx;
   mutation_2dx = epsilon*mutationrate/(dx*dx);
-  printf("[init] mdx2 = %e\n",mutation_2dx);
-  printf("[init] eps  = %e\n",epsilon);
-  printf("[init] mr   = %e\n",mutationrate);
-  printf("[init] dx   = %e\n",dx);
-  
+
   if(quiet<2) {
     printf("#################################################################################\n");
     printf("# stochastic simulation of adapting population with exponential mutation kernel #\n");
