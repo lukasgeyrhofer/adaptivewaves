@@ -44,7 +44,11 @@ except:
     print >> sys.stderr,"# starting from scratch"
     speed = args.speed
     mutationrate= args.mutationrate
-    c = np.exp(-x*x/(2*speed))
+    if args.growthterm == "selection":
+        c = np.exp(-x*x/(2*speed))
+    elif args.growthterm == "step":
+        c = np.ones(space)
+        c[x>0] = np.exp(-x[x>0])
     norm = np.dot(u,c)*dx
     c/=norm
 
