@@ -29,7 +29,8 @@ args = parser.parse_args()
 try:
     udata = np.genfromtxt(args.ufile)
     x = udata[:,0]
-    u = udata[:,1] * 2/3. # numerical profiles are usually for n=1, have to rescale to comply with closure at n=2
+    w = udata[:,1] * 2. # numerical profiles are usually for n=1, have to rescale to comply with closure at n=2
+    u = w/3.
 except:
     print >> sys.stderr,"could not open ufile"
     exit(1)
@@ -39,6 +40,7 @@ space0 = (x*x).argmin()
 dx     = x[1] - x[0]
 speed = args.speed
 mutationrate = args.mutationrate
+
 # make array larger such that boundary conditions can be directly implemented in it
 c2 = np.zeros((space+2,space+2))
 
@@ -63,8 +65,7 @@ c2 /= np.dot(np.dot(c2[1:space+1,1:space+1],u),u)*dx*dx
 
 
 # generate coefficient matrices
-w = 3.*u
-s = x-4.*w/3.
+s = x-4*u
 ds = 0.5*np.diff( np.concatenate([np.array([2*s[0] - s[1]]),s]) + np.concatenate([s,np.array([2*s[-1] - s[-2]])]) )/dx
 ones = np.ones((space,space))
 lin = np.ones(space)
