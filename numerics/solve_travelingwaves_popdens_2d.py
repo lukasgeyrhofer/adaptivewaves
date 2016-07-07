@@ -9,10 +9,10 @@ parser = argparse.ArgumentParser()
 
 parser_alg = parser.add_argument_group(description="####   Algorithm and IO parameters   ####")
 parser_alg_c = parser_alg.add_mutually_exclusive_group()
-parser_alg_c.add_argument("-i","--c2file",default=None,description="Start with previous 2d profile")
-parser_alg_c.add_argument("-c","--c1file",default=None,description="Start by expanding 1d profile")
+parser_alg_c.add_argument("-i","--c2file",default=None,help="Start with previous 2d profile")
+parser_alg_c.add_argument("-c","--c1file",default=None,help="Start by expanding 1d profile")
 parser_alg.add_argument("-o","--outfile",default=None)
-parser_alg.add_argument("-u","--ufile",default=None,description="File with profile for fixation probability (n=1)")
+parser_alg.add_argument("-u","--ufile",default=None,help="File with profile for fixation probability (n=1)")
 parser_alg.add_argument("-a","--alpha",type=float,default=1)
 parser_alg.add_argument("-S","--maxsteps",type=int,default=1000)
 parser_alg.add_argument("-O","--outputstep",type=int,default=0,help="print expression <uu|c> at each OUTPUTSTEP steps to show convergence (default: 0 [=OFF])")
@@ -80,6 +80,8 @@ for i in range(args.maxsteps):
     # NR step
     c2 -= args.alpha * f/fc
     
+    c2[c2<0] = 0
+    
     # rescaling
     c2 /= np.dot(np.dot(c2,u),u)*dx*dx
     
@@ -94,6 +96,6 @@ if args.outfile == None:    fp = sys.stdout
 else:                       fp = open(args.outfile,"w")
 for i in range(space):
     for j in range(space):
-        print >>fp,"%lf %lf %.14e",x[i],x[j],c2[i,j]
+        print >>fp,"{:.2f} {:.2f} {:.10e}".format(x[i],x[j],c2[i,j])
     print >>fp
 fp.close()
