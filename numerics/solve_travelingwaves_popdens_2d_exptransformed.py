@@ -103,7 +103,7 @@ for i in range(args.maxsteps):
     
     # compute c1 for terms on diagonal, assume linear extrapolation
     b = np.dot(c2[1:space+1,1:space+1],w)
-    bp = np.concatenate([b[:space-1],np.array([2*b[space-1] - b[space-2])])
+    bp = np.concatenate([b[:space-1],np.array([2*b[space-1] - b[space-2]])])
     bm = np.concatenate([np.array([2*b[0] - b[1]]),b[1:]])
     
     # apply diagonal terms arising from delta
