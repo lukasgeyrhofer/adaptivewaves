@@ -79,20 +79,22 @@ const_sdx2 = idx2/6.
 const_tdx  = idx1/3.
 const_tt   = 2./3.
 
-coeff_xp_yp = (speed*idx3 + 0.5*(speed-mutationrate)*idx2)               * mat_ones + 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
+coeff_xp_yp = ( speed*idx3 + 0.5*(speed-mutationrate)*idx2             ) * mat_ones + 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
 coeff_xp_y0 = (-speed*idx3 + speed*idx2 + 0.5*(speed-mutationrate)*idx1) * mat_ones + 0.50*(np.outer(lin_ones,s+ds) + np.outer(s,lin_ones))*idx1
-coeff_xp_ym = (-0.50*(speed-mutationrate)*idx2)                          * mat_ones - 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
+coeff_xp_ym = (            - 0.5*(speed-mutationrate)*idx2             ) * mat_ones - 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
 
 coeff_x0_yp = (-speed*idx3 + speed*idx2 + 0.5*(speed-mutationrate)*idx1) * mat_ones + 0.50*(np.outer(lin_ones,s)    + np.outer(s+ds,lin_ones))*idx1
-coeff_x0_y0 = (-4.*speed*idx2)                                           * mat_ones +       np.outer(lin_ones,s+ds) + np.outer(s+ds,lin_ones)
-coeff_x0_ym = (speed*idx3 + speed*idx2 - 0.5*(speed-mutationrate)*idx1)  * mat_ones - 0.50*(np.outer(lin_ones,s)    + np.outer(s+ds,lin_ones))*idx1
+coeff_x0_y0 = (-4.*speed*idx2                                          ) * mat_ones +       np.outer(lin_ones,s+ds) + np.outer(s+ds,lin_ones)
+coeff_x0_ym = ( speed*idx3 + speed*idx2 - 0.5*(speed-mutationrate)*idx1) * mat_ones - 0.50*(np.outer(lin_ones,s)    + np.outer(s+ds,lin_ones))*idx1
 
-coeff_xm_yp = (-0.50*(speed-mutationrate)*idx2)                          * mat_ones - 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
-coeff_xm_y0 = (speed*idx3 + speed*idx2 - 0.5*(speed-mutationrate)*idx1)  * mat_ones - 0.50*(np.outer(lin_ones,s+ds) + np.outer(s,lin_ones))*idx1
-coeff_xm_ym = (-speed*idx3 + 0.5*(speed-mutationrate)*idx2)              * mat_ones + 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
+coeff_xm_yp = (            - 0.5*(speed-mutationrate)*idx2             ) * mat_ones - 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
+coeff_xm_y0 = ( speed*idx3 + speed*idx2 - 0.5*(speed-mutationrate)*idx1) * mat_ones - 0.50*(np.outer(lin_ones,s+ds) + np.outer(s,lin_ones))*idx1
+coeff_xm_ym = (-speed*idx3 + 0.5*(speed-mutationrate)*idx2             ) * mat_ones + 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
 
-fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=1) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=-1)
-
+# completely symmetrized version
+#fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=1) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=-1)
+# ignore symmetry (??)
+fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( const_tdx * w[:space-1],k=1) - np.diag( const_tdx * w[:space-1], k = -1)
 
 # Newton-Raphson iterations
 for i in range(args.maxsteps):
@@ -107,7 +109,7 @@ for i in range(args.maxsteps):
     bm = np.concatenate([np.array([2*b[0] - b[1]]),b[1:]])
     
     # apply diagonal terms arising from delta
-    f += np.diag(bp*const_sdx2 + b*const_tt + bm*const_sdx2) 
+    f += np.diag(b*const_tt + (bm + bp)*const_sdx2 ) 
     f += np.diag(const_tdx * (b[1:]-b[:space-1]),k= 1) + np.diag(-const_sdx2*b[1:space-1],k= 2)
     f += np.diag(const_tdx * (b[1:]-b[:space-1]),k=-1) + np.diag(-const_sdx2*b[1:space-1],k=-2)
     
@@ -124,7 +126,7 @@ for i in range(args.maxsteps):
     if args.outputstep > 0:
         if i % args.outputstep == 0:
             uuc = np.dot(np.dot(c2[1:space+1,1:space+1],u),u*u)*dx*dx
-            print >> sys.stderr,i,uuc
+            print >> sys.stderr,i,uuc,1.-constraint
 
 # ... and final output
 if args.outfile == None:    fp = sys.stdout
