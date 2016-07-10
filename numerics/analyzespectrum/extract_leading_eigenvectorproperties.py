@@ -55,14 +55,12 @@ if not (args.numericnoisethreshold is None):
     eigvec1[np.absolute(eigvec1) < args.numericnoisethreshold] = 0. + 1j * 0.
 
 if0expint = (s + v - m - eigval[0])/(2*v)
-if0exp    = np.array([np.sum(if0expint[:i]*dx) for i in range(space)])
-if0exp   -= if0exp[space0]
-if0       = np.exp(-if0exp)
+if0       = np.exp(-np.cumsum(if0expint*dx))
+if0      /= if0[space0]
 
 if1expint = (s + v - m - eigval[1])/(2*v)
-if1exp    = np.array([np.sum(if1expint[:i]*dx) for i in range(space)])
-if1exp   -= if1exp[space0]
-if1       = np.exp(-if1exp)
+if1       = np.exp(-np.cumsum(if1expint*dx))
+if1      /= if1[space0]
 
 phi0 = eigvec0/if0
 phi1 = eigvec1/if1
