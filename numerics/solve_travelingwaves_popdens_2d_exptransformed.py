@@ -13,8 +13,11 @@ parser_alg_c = parser_alg.add_mutually_exclusive_group()
 parser_alg_c.add_argument("-i","--c2file",default=None,help="Start with previous 2d profile")
 parser_alg_c.add_argument("-c","--c1file",default=None,help="Start by expanding 1d profile")
 
+parser_alg_u = parser_alg.add_mutually_exclusive_group()
+parser_alg_u.add_argument("-u","--ufile",default=None,help="File with profile for fixation probability (n=1)")
+parser_alg_u.add_argument("-w","--wfile",default=None,help="File with profile for 'unconstrained' fixation probability")
+
 parser_alg.add_argument("-o","--outfile",default=None,help="Write output to OUTFILE instead of stdout")
-parser_alg.add_argument("-u","--ufile",default=None,help="File with profile for fixation probability (n=1)")
 parser_alg.add_argument("-a","--alpha",type=float,default=1,help="'Speed' of Newton-Raphson iteration: c2 -= alpha f/f'. Classical NR: alpha=1. Slower convergence but more stability for alpha<1 [default: 1]")
 parser_alg.add_argument("-S","--maxsteps",type=int,default=1000,help="Number of iteration steps [default: 1000]")
 parser_alg.add_argument("-O","--outputstep",type=int,default=0,help="print expression <uu|c> at each OUTPUTSTEP steps to show convergence (default: 0 [=OFF])")
@@ -30,14 +33,21 @@ try:
     udata = np.genfromtxt(args.ufile)
     x = udata[:,0]
     w = udata[:,1] * 2. # numerical profiles are usually for n=1, have to rescale to comply with closure at n=2
-    u = w/3.            
+    u = w/3.
 except:
-    print >> sys.stderr,"could not open ufile"
-    exit(1)
+    try:
+        wdata = np.genfromtxt(args.wfile)
+        x = wdata[:,0]
+        w = wdata[:,1]
+        u = w/3.
+    except:
+        print >> sys.stderr,"could not open file for fixation probability"
+        exit(1)
 
 space  = len(x)
 space0 = (x*x).argmin()
 dx     = x[1] - x[0]
+
 speed  = args.speed
 mutationrate = args.mutationrate
 
@@ -48,13 +58,13 @@ c2 = np.zeros((space+2,space+2))
 try:
     c2data = np.genfromtxt(args.c2file)
     c2[1:space+1,1:space+1] = np.reshape(c2data[:,2],(space,space))
-    print >> sys.stderr,"# starting from c2 profile (file: '%s')"%args.c2file
+    print >> sys.stderr,"# starting from c2 profile (file: '{}')".format(args.c2file)
 except:
     try:
         c1data = np.genfromtxt(args.c1file)
         c1 = c1data[:,1]
         c2[1:space+1,1:space+1] = np.outer(c1,c1)
-        print >> sys.stderr,"# starting from c1 profile (file: '%s')"%args.c1file
+        print >> sys.stderr,"# starting from c1 profile (file: '{}')".format(args.c1file)
     except:
         c1 = np.exp(-0.5*x*x/speed)
         c2[1:space+1,1:space+1] = np.outer(c1,c1)
@@ -65,7 +75,7 @@ c2 /= np.dot(np.dot(c2[1:space+1,1:space+1],u),u)*dx*dx
 
 
 # generate coefficient matrices
-s  = x - 4*u
+s  = x - 4*w/3.
 ds = 0.5*np.diff( np.concatenate([np.array([2*s[0] - s[1]]),s]) + np.concatenate([s,np.array([2*s[-1] - s[-2]])]) )/dx
 
 mat_ones = np.ones((space,space))
@@ -92,9 +102,11 @@ coeff_xm_y0 = ( speed*idx3 + speed*idx2 - 0.5*(speed-mutationrate)*idx1) * mat_o
 coeff_xm_ym = (-speed*idx3 + 0.5*(speed-mutationrate)*idx2             ) * mat_ones + 0.25*(np.outer(lin_ones,s)    + np.outer(s,lin_ones))*idx2
 
 # completely symmetrized version
-#fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=1) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=-1)
+fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=1) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=-1)
+
 # ignore symmetry (??)
-fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( const_tdx * w[:space-1],k=1) - np.diag( const_tdx * w[:space-1], k = -1)
+#fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( const_tdx * w[:space-1],k=1) - np.diag( const_tdx * w[:space-1], k = -1)
+
 
 # Newton-Raphson iterations
 for i in range(args.maxsteps):
@@ -105,11 +117,11 @@ for i in range(args.maxsteps):
     
     # compute c1 for terms on diagonal, assume linear extrapolation
     b  = np.dot(c2[1:space+1,1:space+1],w)
-    bp = np.concatenate([b[:space-1],np.array([2*b[space-1] - b[space-2]])])
-    bm = np.concatenate([np.array([2*b[0] - b[1]]),b[1:]])
+    bp = np.concatenate([b[1:],np.array([2*b[space-1] - b[space-2]])])
+    bm = np.concatenate([np.array([2*b[0] - b[1]]),b[:space-1]])
     
     # apply diagonal terms arising from delta
-    f += np.diag(b*const_tt + (bm + bp)*const_sdx2 ) 
+    f += np.diag(b*const_tt + (bm + bp)*const_sdx2 )
     f += np.diag(const_tdx * (b[1:]-b[:space-1]),k= 1) + np.diag(-const_sdx2*b[1:space-1],k= 2)
     f += np.diag(const_tdx * (b[1:]-b[:space-1]),k=-1) + np.diag(-const_sdx2*b[1:space-1],k=-2)
     
@@ -120,13 +132,15 @@ for i in range(args.maxsteps):
     c2[c2<0] = 0
     
     # rescaling to enforce constraint
-    c2 /= np.dot(np.dot(c2[1:space+1,1:space+1],u),u)*dx*dx
+    constraint = np.dot(np.dot(c2[1:space+1,1:space+1],u),u)*dx*dx
+    c2 /= constraint
     
     # output of <uu|c>?
     if args.outputstep > 0:
         if i % args.outputstep == 0:
             uuc = np.dot(np.dot(c2[1:space+1,1:space+1],u),u*u)*dx*dx
-            print >> sys.stderr,i,uuc,1.-constraint
+            print >> sys.stderr,"{:8d} {:15.8e} {:15.8e}".format(i,uuc,constraint)
+            
 
 # ... and final output
 if args.outfile == None:    fp = sys.stdout

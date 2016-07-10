@@ -60,7 +60,7 @@ coeff_xprev = (1/(dx*dx) - 0.5*speed/dx)*np.ones((space,space))
 coeff_xnext = (1/(dx*dx) + 0.5*speed/dx)*np.ones((space,space))
 coeff_yprev = (1/(dx*dx) - 0.5*speed/dx)*np.ones((space,space))
 coeff_ynext = (1/(dx*dx) + 0.5*speed/dx)*np.ones((space,space))
-coeff_00    = -4*np.ones((space,space))/(dx*dx) + np.outer(x-3*u,np.ones(space)) + np.outer(np.ones(space),x-3*u)
+coeff_00    = -4*np.ones((space,space))/(dx*dx) + np.outer(x-4*u,np.ones(space)) + np.outer(np.ones(space),x-4*u)
 
 # Newton-Raphson iterations
 for i in range(args.maxsteps):
