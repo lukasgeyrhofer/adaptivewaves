@@ -76,7 +76,7 @@ c2 /= np.dot(np.dot(c2[1:space+1,1:space+1],u),u)*dx*dx
 
 # generate coefficient matrices
 s  = x - 4*w/3.
-ds = 0.5*np.diff( np.concatenate([np.array([2*s[0] - s[1]]),s]) + np.concatenate([s,np.array([2*s[-1] - s[-2]])]) )/dx
+ds = 0.5/dx * ( np.concatenate((s[1:],np.array([2*s[-1] - s[-2]]))) - np.concatenate((np.array([2*s[0] - s[1]]),s[:-1])))
 
 mat_ones = np.ones((space,space))
 lin_ones = np.ones(space)
