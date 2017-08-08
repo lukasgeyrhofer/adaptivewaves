@@ -98,9 +98,9 @@ dx2 = (np.diag(np.ones(space-1),k=-1) -2*np.diag(np.ones(space),k=0) + np.diag(n
 
 # construct linear operator for both, diffusion and exponential, mutation models
 if mutationmodel == "diff":
-    A  = np.diag(growth-2*u) # linear term
-    A += speed*dx1           # first derivative
-    A += dx2                 # second derivative
+    A  = np.diag(s)   # linear term
+    A += speed*dx1    # first derivative
+    A += dx2          # second derivative
     
     # free memory
     del dx1
