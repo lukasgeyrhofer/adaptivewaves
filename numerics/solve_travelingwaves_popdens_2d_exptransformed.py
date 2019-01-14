@@ -104,6 +104,7 @@ coeff_xm_ym = (-speed*idx3 + 0.5*(speed-mutationrate)*idx2             ) * mat_o
 # completely symmetrized version
 fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=1) + np.diag( (w[:space-1] - w[1:])/(6.*dx) ,k=-1)
 
+
 # ignore symmetry (??)
 #fc = coeff_x0_y0 + np.diag(2.*w/3.) + np.diag( const_tdx * w[:space-1],k=1) - np.diag( const_tdx * w[:space-1], k = -1)
 
